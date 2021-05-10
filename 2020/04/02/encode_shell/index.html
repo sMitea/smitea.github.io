@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="由于项目中需要通过远程 shell 进行主机信息的采集，所以就免不了采用 SSH 来作为传输媒介。 由于 SSH 配置灵活，无法保证在执行完 shell 命令之后格式都是统一的，所以需要对执行的 shell 再次进行包装。比如: 执行一段 shell : 1sleep 5; echo &amp;#x27;Hello World&amp;#x27; 然后回显的结果是: 12345sleep 5; echo &amp;#x">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一种 SHELL 结果解析方法">
+<meta property="og:url" content="http://shawhuang.com/2020/04/02/encode_shell/index.html">
+<meta property="og:site_name" content="Shaw">
+<meta property="og:description" content="由于项目中需要通过远程 shell 进行主机信息的采集，所以就免不了采用 SSH 来作为传输媒介。 由于 SSH 配置灵活，无法保证在执行完 shell 命令之后格式都是统一的，所以需要对执行的 shell 再次进行包装。比如: 执行一段 shell : 1sleep 5; echo &amp;#x27;Hello World&amp;#x27; 然后回显的结果是: 12345sleep 5; echo &amp;#x">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-04-02T15:24:23.000Z">
+<meta property="article:modified_time" content="2021-05-10T13:30:04.493Z">
+<meta property="article:author" content="Shaw">
+<meta property="article:tag" content="solution">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon.jpeg" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.jpeg">
+        
+      
+    
+    <!-- title -->
+    <title>一种 SHELL 结果解析方法</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2020/03/19/heapstack/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://shawhuang.com/2020/04/02/encode_shell/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://shawhuang.com/2020/04/02/encode_shell/&text=一种 SHELL 结果解析方法"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://shawhuang.com/2020/04/02/encode_shell/&is_video=false&description=一种 SHELL 结果解析方法"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=一种 SHELL 结果解析方法&body=Check out this article: http://shawhuang.com/2020/04/02/encode_shell/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://shawhuang.com/2020/04/02/encode_shell/&name=一种 SHELL 结果解析方法&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://shawhuang.com/2020/04/02/encode_shell/&t=一种 SHELL 结果解析方法"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        一种 SHELL 结果解析方法
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">Shaw</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-04-02T15:24:23.000Z" itemprop="datePublished">2020-04-02</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/solution/" rel="tag">solution</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>由于项目中需要通过远程 shell 进行主机信息的采集，所以就免不了采用 SSH 来作为传输媒介。</p>
+<p>由于 SSH 配置灵活，无法保证在执行完 shell 命令之后格式都是统一的，所以需要对执行的 shell 再次进行包装。比如:</p>
+<p>执行一段 shell :</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sleep 5; echo &#x27;Hello World&#x27;</span><br></pre></td></tr></table></figure>
+<p>然后回显的结果是:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sleep 5; echo &#x27;Hello World&#x27;</span><br><span class="line">Last login: Thu Apr  2 15:21:54 2020 from 172.17.0.1</span><br><span class="line">root@682ec28abc21:~# sleep 5; echo &#x27;Hello World&#x27;</span><br><span class="line">Hello World</span><br><span class="line">root@682ec28abc21:~#</span><br></pre></td></tr></table></figure>
+<p>上面的结果中：</p>
+<p>第一行信息是由于你执行 shell 时写入到 tty 时回显的内容，这段信息可能不会在第一行出现；<br>第二行信息是 ssh session 登陆之后操作系统回显的信息，这行信息可被配置，它也是不确定的；<br>第三行是 shell 执行输入到 tty 中回显的信息，<code>root@682ec28abc21:~#</code> 前缀也是可配置的，它也是不确定的；</p>
+<blockquote>
+<p>由于 ssh session 在第一次登陆时，需要执行一些工作，比如加载当前用户的环境变量以及一些配置信息，如果当前用户的环境变量或者其他加载项处理时间较久，所以就会在第一行显示你执行的 shell 命令。</p>
+</blockquote>
+<p>所以得想个办法来区分什么是 shell 真实回显的数据，比如上面的例子中回显的 <code>Hello World</code>, 当然不同的 shell 命令回显的结果也是不同。<br>为了尽量通配所有 shell 命令回显数据，只能对 shell 命令重新包装一下，在命令执行之前和命令执行之后回显一行自定义信息，比如:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &#x27;#gJdaQTG6Zrwes-Lh0gQfd&#x27;;sleep 5; echo &#x27;Hello World&#x27;;echo &#x27;gJdaQTG6Zrwes-Lh0gQfd#&#x27;</span><br></pre></td></tr></table></figure>
+<p>这段 shell 里，我分别在命令之前和命令之后给定一个 <code>echo</code>，用于回显开始信息和结束信息。这段 shell 回显的内容是:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">echo &#x27;#gJdaQTG6Zrwes-Lh0gQfd&#x27;;sleep 5; echo &#x27;Hello World&#x27;;echo &#x27;gJdaQTG6Zrwes-Lh0gQfd#&#x27;</span><br><span class="line">Last login: Thu Apr  2 15:21:54 2020 from 172.17.0.1</span><br><span class="line">echo &#x27;gJdaQTG6Zrwes-Lh0gQfd#&#x27;gJdaQTG6Zrwes-Lh0gQfd&#x27;;sleep 5; echo &#x27;Hello World&#x27;;</span><br><span class="line">#gJdaQTG6Zrwes-Lh0gQfd</span><br><span class="line">Hello World</span><br><span class="line">gJdaQTG6Zrwes-Lh0gQfd#</span><br><span class="line">root@682ec28abc21:~#</span><br></pre></td></tr></table></figure>
+<p>这样问题就变得简单了，先匹配 <code>#gJdaQTG6Zrwes-Lh0gQfd</code> 开始行，然后匹配结束行 <code>gJdaQTG6Zrwes-Lh0gQfd#</code>，中间的内容就是 shell 回显的正确内容。下面是 rust 实现的方式:</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> channel = <span class="keyword">self</span></span><br><span class="line">    .session</span><br><span class="line">    .channel_session()?;</span><br><span class="line">channel.request_pty(<span class="string">&quot;vt100&quot;</span>, <span class="literal">None</span>, <span class="literal">None</span>)?;</span><br><span class="line">channel.shell()?;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 生成标记命令</span></span><br><span class="line"><span class="keyword">let</span> mark_start = <span class="built_in">format!</span>(<span class="string">&quot;#&#123;&#125;&quot;</span>, request.uid);</span><br><span class="line"><span class="keyword">let</span> mark_end = <span class="built_in">format!</span>(<span class="string">&quot;&#123;&#125;#&quot;</span>, request.uid);</span><br><span class="line"><span class="keyword">let</span> script = <span class="built_in">format!</span>(<span class="string">&quot;echo &#x27;&#123;&#125;&#x27;;&#123;&#125;;echo &#x27;&#123;&#125;&#x27;&quot;</span>, mark_start, script, mark_end);</span><br><span class="line"><span class="comment">// 发送 Shell</span></span><br><span class="line">channel.write(&amp;script.as_bytes())?;</span><br><span class="line">channel.write(<span class="string">b&quot;\n&quot;</span>)?;</span><br><span class="line"><span class="comment">// 缓存已读取到的数据</span></span><br><span class="line"><span class="keyword">let</span> <span class="keyword">mut</span> buffer: <span class="built_in">String</span> = <span class="built_in">String</span>::new();</span><br><span class="line"><span class="keyword">let</span> timeout = request.task.timeout * <span class="number">1000</span>;</span><br><span class="line"><span class="keyword">let</span> split_count = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">for</span> _ <span class="keyword">in</span> <span class="number">0</span>..split_count &#123;</span><br><span class="line">    <span class="comment">// 每次读取 1kb</span></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> buf = [<span class="number">0u8</span>; <span class="number">1024</span>];</span><br><span class="line">    <span class="keyword">let</span> size = channel.read(&amp;<span class="keyword">mut</span> buf)?;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果没有数据则跳出</span></span><br><span class="line">    <span class="keyword">if</span> size == <span class="number">0</span> &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 存到缓冲区</span></span><br><span class="line">    <span class="keyword">let</span> slice = &amp;buf[<span class="number">0</span>..size];</span><br><span class="line">    <span class="keyword">let</span> rs = std::<span class="built_in">str</span>::from_utf8(slice)?;</span><br><span class="line">    buffer += rs;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 切分行</span></span><br><span class="line">    <span class="keyword">let</span> lines = buffer.lines();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> start_count = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> line <span class="keyword">in</span> lines &#123;</span><br><span class="line">        <span class="comment">// 记录已查找到开始位置的次数</span></span><br><span class="line">        <span class="keyword">if</span> line.trim() == mark_start &#123;</span><br><span class="line">            start_count += <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 匹配结尾行</span></span><br><span class="line">        <span class="keyword">if</span> line.trim() == mark_end &#123;</span><br><span class="line">            <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, buffer);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 关闭 Session channel</span></span><br><span class="line">            channel.close()?;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">Ok</span>(());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 这里需要匹配到三次以上才能拿到正确的输出</span></span><br><span class="line">        <span class="keyword">if</span> start_count &gt; <span class="number">0</span> &#123;</span><br><span class="line">            <span class="built_in">println!</span>(<span class="string">&quot;rs: &#123;&#125;&quot;</span>, line);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 异步返回数据</span></span><br><span class="line">            request.commit(table! &#123; <span class="string">&quot;line&quot;</span> =&gt; line&#125;)?;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 强制中断一下 CPU，这样就可以保证 CPU 不会空转</span></span><br><span class="line">    std::thread::sleep(Duration::from_millis((timeout / split_count) <span class="keyword">as</span> <span class="built_in">u64</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的代码需要注意的是针对 CPU 优化的部分，每次读取都需要稍微停一会。 有可能 SSH 中还没有数据，这段时间相当于 CPU 一直在空转，类似自旋锁那样会使得 CPU 使用率升高，这时候宁愿执行 CPU 中断，虽然需要一点上下文切换的时间，但如果该条 shell 执行时间，比如把命令换为 <code>sleep 10</code>，这就会导致 CPU 空转 5-7 s 左右，而这段时间内，其他线程是没法运行的，效率很低。</p>
+<p>关于 ssh 中 tty 的选择，需要根据你的使用场景来进行。我当前所选的 <code>vt100</code> 是因为它输出时不会带有色彩字符，这样就比较好解析一点，如果你需要模拟一个 ssh 终端工具的话，建议你使用 <code>xterm</code>， 它保留了原汁原味。有关 tty 的介绍可以看下 <a target="_blank" rel="noopener" href="https://invisible-island.net/vttest/">vttest</a>。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://shawhuang.com/2020/04/02/encode_shell/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://shawhuang.com/2020/04/02/encode_shell/&text=一种 SHELL 结果解析方法"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://shawhuang.com/2020/04/02/encode_shell/&is_video=false&description=一种 SHELL 结果解析方法"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=一种 SHELL 结果解析方法&body=Check out this article: http://shawhuang.com/2020/04/02/encode_shell/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://shawhuang.com/2020/04/02/encode_shell/&title=一种 SHELL 结果解析方法"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://shawhuang.com/2020/04/02/encode_shell/&name=一种 SHELL 结果解析方法&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://shawhuang.com/2020/04/02/encode_shell/&t=一种 SHELL 结果解析方法"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2017-2021
+    Shaw
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Umami Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>
