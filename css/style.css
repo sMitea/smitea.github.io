@@ -724,6 +724,14 @@ body {
 #header-post #menu-icon-tablet:hover {
   color: #41c300;
 }
+#header-post #home {
+  float: right;
+  margin-right: 2rem;
+  margin-left: 15px;
+}
+#header-post #home:hover {
+  color: #41c300;
+}
 #header-post #top-icon-tablet {
   position: fixed;
   right: 2rem;
